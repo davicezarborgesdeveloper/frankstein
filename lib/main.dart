@@ -11,18 +11,72 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Exemplo de dados (simulando o monthly_variation_chart.data)
+    final demoData = <MonthlyVariation>[
+      MonthlyVariation(ano: 2024, mes: 'Jan', percentual: 1.0, mesOrdem: 1),
+      MonthlyVariation(ano: 2024, mes: 'Fev', percentual: 2.3, mesOrdem: 2),
+      MonthlyVariation(ano: 2024, mes: 'Mar', percentual: 1.0, mesOrdem: 3),
+      MonthlyVariation(ano: 2024, mes: 'Abr', percentual: -0.7, mesOrdem: 4),
+      MonthlyVariation(ano: 2024, mes: 'Mai', percentual: 0.9, mesOrdem: 5),
+      MonthlyVariation(ano: 2024, mes: 'Jun', percentual: -0.6, mesOrdem: 6),
+      MonthlyVariation(ano: 2024, mes: 'Jul', percentual: 2.0, mesOrdem: 7),
+      MonthlyVariation(ano: 2024, mes: 'Ago', percentual: 1.42, mesOrdem: 8),
+      MonthlyVariation(ano: 2024, mes: 'Set', percentual: 1.12, mesOrdem: 9),
+      MonthlyVariation(ano: 2024, mes: 'Out', percentual: 1.20, mesOrdem: 10),
+      MonthlyVariation(ano: 2024, mes: 'Nov', percentual: 1.06, mesOrdem: 11),
+      MonthlyVariation(ano: 2024, mes: 'Dez', percentual: 0.96, mesOrdem: 12),
+    ];
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const Scaffold(
-        backgroundColor: Color(0xFFEAEAEA),
+      home: Scaffold(
+        backgroundColor: const Color(0xFFEAEAEA),
         body: Center(
           child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: MonthlyVariationCard(),
+            padding: const EdgeInsets.all(16.0),
+            child: MonthlyVariationCard(
+              data: demoData, // <-- AGORA VEM DA SUA LISTA
+            ),
           ),
         ),
       ),
     );
+  }
+}
+
+// ------------------- MODEL -------------------
+
+class MonthlyVariation {
+  int? id;
+  int? ano;
+  String? mes;
+  double? percentual;
+  int? mesOrdem;
+
+  MonthlyVariation({
+    this.id,
+    this.ano,
+    this.mes,
+    this.percentual,
+    this.mesOrdem,
+  });
+
+  MonthlyVariation.fromJson(Map<String, dynamic> json) {
+    id = json['id'];
+    ano = json['ano'];
+    mes = json['mes'];
+    percentual = (json['percentual'] as num?)?.toDouble();
+    mesOrdem = json['mes_ordem'];
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['id'] = id;
+    data['ano'] = ano;
+    data['mes'] = mes;
+    data['percentual'] = percentual;
+    data['mes_ordem'] = mesOrdem;
+    return data;
   }
 }
 
@@ -53,47 +107,19 @@ class _ChartConstants {
 // ------------------- CARD -------------------
 
 class MonthlyVariationCard extends StatelessWidget {
-  const MonthlyVariationCard({super.key});
+  final List<MonthlyVariation> data; // <-- nova propriedade
+
+  const MonthlyVariationCard({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
-    final values = <double>[
-      1.0,
-      2.3,
-      1.0,
-      -0.7,
-      0.9,
-      -0.6,
-      2.0,
-      1.42,
-      1.12,
-      1.20,
-      1.06,
-      0.96,
-    ];
-
-    final labels = <String>[
-      'Jan',
-      'Fev',
-      'Mar',
-      'Abr',
-      'Mai',
-      'Jun',
-      'Jul',
-      'Ago',
-      'Set',
-      'Out',
-      'Nov',
-      'Dez',
-    ];
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -126,8 +152,8 @@ class MonthlyVariationCard extends StatelessWidget {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final totalBarsWidth =
-                          values.length * _ChartConstants.barWidth +
-                          (values.length - 1) * _ChartConstants.barSpacing;
+                          data.length * _ChartConstants.barWidth +
+                          (data.length - 1) * _ChartConstants.barSpacing;
 
                       final paintWidth = math.max(
                         constraints.maxWidth,
@@ -143,8 +169,7 @@ class MonthlyVariationCard extends StatelessWidget {
                           width: paintWidth,
                           child: CustomPaint(
                             painter: _BarChartPainter(
-                              values: values,
-                              labels: labels,
+                              data: data, // <-- passando a lista pro painter
                             ),
                           ),
                         ),
@@ -205,10 +230,9 @@ class _YAxisPainter extends CustomPainter {
 // ------------------- GRÁFICO (GRADE + BARRAS + MESES) -------------------
 
 class _BarChartPainter extends CustomPainter {
-  final List<double> values;
-  final List<String> labels;
+  final List<MonthlyVariation> data;
 
-  _BarChartPainter({required this.values, required this.labels});
+  _BarChartPainter({required this.data});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -272,7 +296,7 @@ class _BarChartPainter extends CustomPainter {
       ..color = const Color(0xFF00AEEF)
       ..style = PaintingStyle.fill;
 
-    final int n = values.length;
+    final int n = data.length;
     final double totalBarsWidth =
         n * _ChartConstants.barWidth + (n - 1) * _ChartConstants.barSpacing;
 
@@ -291,10 +315,10 @@ class _BarChartPainter extends CustomPainter {
     );
 
     canvas.save();
-    canvas.clipRect(chartRect); // <- aqui é o truque do topo/fundo reto
+    canvas.clipRect(chartRect); // <- clipa topo/fundo das barras
 
     for (int i = 0; i < n; i++) {
-      final value = values[i];
+      final value = data[i].percentual ?? 0.0; // <-- usa o percentual do model
 
       // altura proporcional ao valor em relação ao range total
       final barHeight =
@@ -317,8 +341,6 @@ class _BarChartPainter extends CustomPainter {
         barBottom = zeroY + barHeight;
       }
 
-      // NÃO faz clamp em chartTop/chartBottom:
-      // se passar do limite, deixa passar que o clipRect corta
       final barRect = Rect.fromLTRB(barLeft, barTop, barRight, barBottom);
 
       canvas.drawRRect(
@@ -327,13 +349,13 @@ class _BarChartPainter extends CustomPainter {
       );
     }
 
-    canvas.restore(); // tira o clip: labels dos meses não são cortadas
+    canvas.restore(); // labels dos meses não são cortadas
 
     // ===== labels dos meses: logo abaixo da linha preta (0.0) =====
     final textStyle = TextStyle(fontSize: 12, color: Colors.grey.shade700);
 
     for (int i = 0; i < n; i++) {
-      final label = labels[i];
+      final label = data[i].mes ?? ''; // <-- usa o mes do model
 
       final tp = TextPainter(
         text: TextSpan(text: label, style: textStyle),
@@ -371,7 +393,7 @@ class _BarChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _BarChartPainter oldDelegate) {
-    return !listEquals(oldDelegate.values, values) ||
-        !listEquals(oldDelegate.labels, labels);
+    // Repaint se a referência da lista mudar
+    return !listEquals(oldDelegate.data, data);
   }
 }
